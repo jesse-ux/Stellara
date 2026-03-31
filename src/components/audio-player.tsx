@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Pause, Play } from "lucide-react";
+import { Download, ExternalLink, Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatDuration } from "@/lib/utils";
+import { cn, formatDuration } from "@/lib/utils";
 
 interface AudioPlayerProps {
   src: string;
   showExternalLink?: boolean;
+  showDownloadButton?: boolean;
+  autoPlay?: boolean;
+  className?: string;
 }
 
 export function AudioPlayer({
   src,
   showExternalLink = true,
+  showDownloadButton = true,
+  autoPlay = false,
+  className,
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -59,6 +65,24 @@ export function AudioPlayer({
     };
   }, []);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    audio.load();
+
+    if (!autoPlay) return;
+
+    void audio.play().catch(() => {
+      setIsPlaying(false);
+    });
+  }, [autoPlay, src]);
+
   const togglePlayback = async () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -81,7 +105,7 @@ export function AudioPlayer({
   };
 
   return (
-    <div className="panel-muted p-4">
+    <div className={cn("panel-muted p-4", className)}>
       <audio ref={audioRef} preload="metadata" src={src} />
 
       <div className="flex items-center gap-3">
@@ -113,13 +137,23 @@ export function AudioPlayer({
           />
         </div>
 
-        {showExternalLink && (
-          <a href={src} target="_blank" rel="noreferrer">
-            <Button variant="ghost" size="icon" aria-label="打开音频链接">
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          </a>
-        )}
+        <div className="flex items-center gap-1">
+          {showDownloadButton && (
+            <a href={src} download>
+              <Button variant="ghost" size="icon" aria-label="下载音频">
+                <Download className="h-4 w-4" />
+              </Button>
+            </a>
+          )}
+
+          {showExternalLink && (
+            <a href={src} target="_blank" rel="noreferrer">
+              <Button variant="ghost" size="icon" aria-label="打开音频链接">
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

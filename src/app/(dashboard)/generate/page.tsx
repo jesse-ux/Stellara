@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Sparkles, Volume2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/use-toast";
 import { MAX_TEXT_LENGTH, validateGenerationText } from "@/lib/voice";
 import { withDerivedVoiceStatus } from "@/lib/voice-status";
 import type { Voice } from "@/types";
+import { AudioPlayer } from "@/components/audio-player";
 
 interface GenerateResult {
   task: {
@@ -44,7 +45,6 @@ export default function GeneratePage() {
   const [submitting, setSubmitting] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
-  const latestAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const loadVoices = async () => {
@@ -107,18 +107,9 @@ export default function GeneratePage() {
       setStepIndex(GENERATION_STEPS.length - 1);
       setAudioUrl(data.task.audio_url);
 
-      if (latestAudioRef.current) {
-        latestAudioRef.current.pause();
-        latestAudioRef.current.currentTime = 0;
-      }
-
-      const audio = new Audio(data.task.audio_url);
-      latestAudioRef.current = audio;
-      void audio.play().catch(() => undefined);
-
       toast({
         title: "生成完成",
-        description: "音频已经生成，并已开始自动播放。",
+        description: "音频已经生成，底部播放条已准备就绪。",
       });
     } catch (error) {
       toast({
@@ -132,7 +123,7 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className={`space-y-8 ${audioUrl ? "pb-36" : ""}`}>
       <div className="page-header">
         <div>
           <h1 className="page-title">生成音频</h1>
@@ -179,10 +170,11 @@ export default function GeneratePage() {
                   id="generation-text"
                   name="generation_text"
                   autoComplete="off"
+                  maxLength={MAX_TEXT_LENGTH}
                   placeholder="例如：Good morning professor, today I will talk about my project…"
                   rows={10}
                   value={text}
-                  onChange={(event) => setText(event.target.value)}
+                  onChange={(event) => setText(event.target.value.slice(0, MAX_TEXT_LENGTH))}
                 />
                 {textError && <p className="text-sm text-red-400">{textError}</p>}
               </div>
@@ -226,18 +218,31 @@ export default function GeneratePage() {
                     音频已生成
                   </div>
                   <p className="text-sm text-stellara-gray-6">
-                    结果已自动播放。若浏览器拦截播放，请重新点击“开始生成”或刷新后重试。
+                    底部播放条会自动尝试播放。若浏览器拦截播放，请点击播放按钮继续。
                   </p>
                 </>
               ) : (
                 <p className="text-sm text-stellara-gray-6">
-                  生成成功后会自动播放，不再展示页面内播放器。
+                  生成成功后，页面底部会出现固定播放条。
                 </p>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {audioUrl ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4 sm:px-6">
+          <div className="mx-auto w-full max-w-5xl">
+            <AudioPlayer
+              key={audioUrl}
+              src={audioUrl}
+              autoPlay
+              className="border border-stellara-gray-3/80 bg-stellara-gray-1/92 shadow-[0_-12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -7,7 +7,15 @@ type CookieToSet = {
   options?: Parameters<NextResponse["cookies"]["set"]>[2];
 };
 
+const PUBLIC_FILE_PATTERN = /\.[^/]+$/;
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/_next") || pathname === "/favicon.ico" || PUBLIC_FILE_PATTERN.test(pathname)) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -35,8 +43,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
   // Public routes
   if (pathname === "/login") {
     if (user) {
@@ -57,6 +63,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/cron).*)",
+    "/((?!api/cron|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

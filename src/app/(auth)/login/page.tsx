@@ -38,6 +38,8 @@ function LoginForm() {
       if (error) {
         toast({ title: "登录失败", description: error.message, variant: "destructive" });
       } else {
+        toast({ title: "登录成功", description: "欢迎回来，正在进入控制台。" });
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
         router.push(redirect);
       }
     }
