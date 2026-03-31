@@ -109,7 +109,7 @@ export default function GeneratePage() {
 
       toast({
         title: "生成完成",
-        description: "音频已经生成，底部播放条已准备就绪。",
+        description: "音频已经生成，请使用底部播放条开始播放。",
       });
     } catch (error) {
       toast({
@@ -218,7 +218,7 @@ export default function GeneratePage() {
                     音频已生成
                   </div>
                   <p className="text-sm text-stellara-gray-6">
-                    底部播放条会自动尝试播放。若浏览器拦截播放，请点击播放按钮继续。
+                    请点击底部播放条上的播放按钮开始收听，也可以直接下载音频。
                   </p>
                 </>
               ) : (
@@ -237,7 +237,6 @@ export default function GeneratePage() {
             <AudioPlayer
               key={audioUrl}
               src={audioUrl}
-              autoPlay
               className="border border-stellara-gray-3/80 bg-stellara-gray-1/92 shadow-[0_-12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl"
             />
           </div>
