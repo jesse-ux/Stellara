@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    color-scheme: dark;
+  }
+
+  html {
+    @apply bg-stellara-dark;
+  }
+
+  body {
+    @apply min-h-screen bg-stellara-dark text-stellara-white font-sans antialiased;
+    background-image:
+      radial-gradient(circle at top, rgba(216, 179, 106, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(11, 16, 32, 1) 0%, rgba(13, 18, 35, 1) 48%, rgba(11, 16, 32, 1) 100%);
+  }
+
+  * {
+    @apply border-stellara-gray-3;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply border bg-stellara-gray-1/70 backdrop-blur-md;
+  }
+
+  .glass-hover {
+    @apply transition-colors duration-200 hover:border-stellara-gray-4 hover:bg-stellara-gray-1/85;
+  }
+
+  .gold-gradient {
+    @apply bg-gradient-to-r from-stellara-gold-dark to-stellara-gold-light;
+  }
+
+  .text-gold-gradient {
+    @apply bg-gradient-to-r from-stellara-gold to-stellara-gold-light bg-clip-text text-transparent;
+  }
+
+  .page-shell {
+    @apply mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-3 border-b border-stellara-gray-3/80 pb-6 sm:flex-row sm:items-end sm:justify-between;
+  }
+
+  .page-title {
+    @apply font-display text-3xl font-semibold tracking-tight text-stellara-white;
+  }
+
+  .page-subtitle {
+    @apply max-w-2xl text-sm leading-6 text-stellara-gray-6;
+  }
+
+  .panel-muted {
+    @apply rounded-2xl border border-stellara-gray-3/80 bg-stellara-gray-1/40;
+  }
+}
