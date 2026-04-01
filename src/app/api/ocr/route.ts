@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { recognizeTextFromImage } from "@/lib/paddle";
+import { recognizeTextFromImage } from "@/lib/google-vision";
 import { validateOcrImage } from "@/lib/ocr";
 import { createClient } from "@/lib/supabase/server";
 

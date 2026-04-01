@@ -43,7 +43,7 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 - 在“口语文本”输入框右侧增加相机按钮
 - 手机端点击后直接调用系统相机拍照
 - 将拍到的图片上传到服务端 OCR 路由
-- 服务端调用 Paddle Layout Parsing / OCR 接口
+- 服务端调用 Google Cloud Vision OCR 接口
 - 将识别出的文本回填到当前输入框
 
 ### Why This Fits The Product
@@ -56,7 +56,7 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 
 ### Current Architecture
 
-推荐采用“前端拍照 + 服务端代理 OCR”的结构，不要在浏览器里直接请求 Paddle 接口。
+推荐采用“前端拍照 + 服务端代理 OCR”的结构，不要在浏览器里直接请求 Google Vision 接口。
 
 前端职责：
 
@@ -72,33 +72,34 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 - 只允许已登录用户调用
 - 接收图片文件
 - 将图片转成 Base64
-- 以 `fileType = 1` 调用 Paddle 接口
+- 调用 Google Vision `images:annotate`
 - 从返回结果中提取纯文本并返回给前端
 
-### Paddle Integration Notes
+### Google Vision Integration Notes
 
-你给的 Python 示例可以直接说明 Paddle 接口的调用方式，但在这个仓库里更适合改写成 Next.js Route Handler 的 `fetch` 实现，而不是把 `requests` Python 代码直接嵌进去。
+当前代码库通过服务账号调用 Google Cloud Vision OCR，更适合部署在 Vercel 这类海外函数环境中。
 
 在当前代码库里，建议新增以下服务端环境变量：
 
 ```env
-PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
-PADDLE_OCR_TOKEN=your-paddle-token
-PADDLE_OCR_TIMEOUT_MS=60000
+GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
+GOOGLE_VISION_TIMEOUT_MS=20000
+GOOGLE_VISION_FEATURE=DOCUMENT_TEXT_DETECTION
 ```
 
 重要：
 
-- `PADDLE_OCR_TOKEN` 只能放服务端环境变量，不能暴露到前端
+- `GOOGLE_VISION_CREDENTIALS_JSON` 只能放服务端环境变量，不能暴露到前端
 - 前端只能请求自己的 `/api/ocr`
-- 服务端再带 token 去请求 Paddle
+- 服务端再用服务账号换取 access token 去请求 Google Vision
 
 ### Extraction Strategy
 
-Paddle 返回的是布局解析结果，不只是单纯 OCR 文本。对于当前 MVP，建议先做最小实现：
+Google Vision 返回的是 OCR 结构化结果。对于当前 MVP，建议先做最小实现：
 
 - 只处理单张图片
-- 只读取 `result.layoutParsingResults[*].markdown.text`
+- 优先读取 `responses[0].fullTextAnnotation.text`
+- 回退读取 `responses[0].textAnnotations[0].description`
 - 把所有文本块按顺序拼接成一个字符串
 - 暂时忽略图片下载、版面截图和复杂结构化输出
 
@@ -177,6 +178,9 @@ MINIMAX_MAX_RETRIES=2
 PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
 PADDLE_OCR_TOKEN=your-paddle-token
 PADDLE_OCR_TIMEOUT_MS=60000
+GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
+GOOGLE_VISION_TIMEOUT_MS=20000
+GOOGLE_VISION_FEATURE=DOCUMENT_TEXT_DETECTION
 ```
 
 4. 初始化 Supabase 数据库
