@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Sparkles, Volume2 } from "lucide-react";
+import { Camera, Loader2, Sparkles, Volume2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { MAX_TEXT_LENGTH, validateGenerationText } from "@/lib/voice";
 import { withDerivedVoiceStatus } from "@/lib/voice-status";
 import type { Voice } from "@/types";
 import { AudioPlayer } from "@/components/audio-player";
+import { MAX_OCR_IMAGE_BYTES, MAX_OCR_IMAGE_DIMENSION, validateOcrImage } from "@/lib/ocr";
 
 interface GenerateResult {
   task: {
@@ -43,6 +44,7 @@ export default function GeneratePage() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
 
@@ -79,6 +81,108 @@ export default function GeneratePage() {
 
   const textError = useMemo(() => validateGenerationText(text), [text]);
   const remainingChars = MAX_TEXT_LENGTH - text.length;
+
+  const resizeImageForOcr = async (file: File) => {
+    if (file.type === "image/heic" || file.type === "image/heif") {
+      return file;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image();
+        element.onload = () => resolve(element);
+        element.onerror = () => reject(new Error("图片读取失败"));
+        element.src = objectUrl;
+      });
+
+      const largestSide = Math.max(image.width, image.height);
+      const scale = largestSide > MAX_OCR_IMAGE_DIMENSION
+        ? MAX_OCR_IMAGE_DIMENSION / largestSide
+        : 1;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return file;
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", 0.86);
+      });
+
+      if (!blob) {
+        return file;
+      }
+
+      const normalizedName = file.name.replace(/\.[^.]+$/, "") || "capture";
+      const compressed = new File([blob], `${normalizedName}.jpg`, { type: "image/jpeg" });
+
+      if (compressed.size >= file.size && file.size <= MAX_OCR_IMAGE_BYTES) {
+        return file;
+      }
+
+      return compressed;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+
+  const handleOcrFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    const validationError = validateOcrImage(file);
+    if (validationError) {
+      toast({ title: "无法识别图片", description: validationError, variant: "destructive" });
+      return;
+    }
+
+    setOcrLoading(true);
+
+    try {
+      const preparedFile = await resizeImageForOcr(file);
+      const formData = new FormData();
+      formData.append("image", preparedFile);
+
+      const response = await fetch("/api/ocr", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await response.json()) as { text?: string; error?: string };
+      if (!response.ok || !data.text) {
+        throw new Error(data.error || "图片识别失败");
+      }
+
+      const nextText = data.text.slice(0, MAX_TEXT_LENGTH);
+      setText(nextText);
+
+      toast({
+        title: "识别完成",
+        description:
+          data.text.length > MAX_TEXT_LENGTH
+            ? `文本过长，已截断到 ${MAX_TEXT_LENGTH} 个字符。`
+            : "识别结果已填入口语文本。",
+      });
+    } catch (error) {
+      toast({
+        title: "OCR 识别失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   const handleGenerate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,7 +232,7 @@ export default function GeneratePage() {
         <div>
           <h1 className="page-title">生成音频</h1>
           <p className="page-subtitle mt-1">
-            选择一个音色，输入文本，系统会生成结果并自动播放。
+            选择一个音色，输入文本，或在手机上拍照识别讲稿，再生成语音。
           </p>
         </div>
       </div>
@@ -159,10 +263,28 @@ export default function GeneratePage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="generation-text">口语文本</Label>
-                  <span
-                    className={`text-xs ${remainingChars < 0 ? "text-red-400" : "text-stellara-gray-6"}`}
-                  >
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="generation-text">口语文本</Label>
+                    <label className="sm:hidden">
+                      <input
+                        accept="image/*"
+                        capture="environment"
+                        className="sr-only"
+                        disabled={ocrLoading || submitting}
+                        type="file"
+                        onChange={handleOcrFileChange}
+                      />
+                      <span className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-stellara-gray-4 bg-stellara-gray-1/40 px-3 text-xs font-medium text-stellara-gray-6 transition-colors hover:bg-stellara-gray-2/70 hover:text-stellara-white">
+                        {ocrLoading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Camera className="h-3.5 w-3.5" />
+                        )}
+                        {ocrLoading ? "识别中" : "拍照导入"}
+                      </span>
+                    </label>
+                  </div>
+                  <span className="text-xs text-stellara-gray-6">
                     {remainingChars} 字符剩余
                   </span>
                 </div>
@@ -176,10 +298,16 @@ export default function GeneratePage() {
                   value={text}
                   onChange={(event) => setText(event.target.value.slice(0, MAX_TEXT_LENGTH))}
                 />
+                <p className="text-xs text-stellara-gray-6 sm:hidden">
+                  手机上可直接拍照识别讲稿，识别结果会自动填入输入框。
+                </p>
                 {textError && <p className="text-sm text-red-400">{textError}</p>}
               </div>
 
-              <Button type="submit" disabled={submitting || loading || voices.length === 0 || !!textError}>
+              <Button
+                type="submit"
+                disabled={submitting || ocrLoading || loading || voices.length === 0 || !!textError}
+              >
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -199,7 +327,7 @@ export default function GeneratePage() {
         <Card>
           <CardHeader>
             <CardTitle>生成状态</CardTitle>
-            <CardDescription>当前使用单请求完成生成，结果成功后自动播放。</CardDescription>
+            <CardDescription>当前使用单请求完成生成，结果成功后可立即播放或下载。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">

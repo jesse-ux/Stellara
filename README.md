@@ -17,6 +17,7 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 - 音色列表页 `/voices`
 - 新建音色页 `/voices/new`
 - 文本生成音频页 `/generate`
+- 移动端拍照 OCR 导入口语文本
 - 生成历史页 `/history`
 - 主样本上传、拖拽上传、麦克风录音
 - 录音实时频谱图
@@ -24,6 +25,7 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 - 服务端 API
   - `POST /api/voices`
   - `POST /api/generate`
+  - `POST /api/ocr`
 
 当前还没有实现：
 
@@ -31,6 +33,120 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 - 音频持久化到 Supabase Storage
 - 管理后台
 - 自动刷新 7 天即将过期音色的 cron job
+- PDF OCR
+- 多页文档 OCR
+
+## Mobile OCR Capture
+
+当前 `/generate` 页面已经实现一个移动端优先的 OCR 文本导入能力：
+
+- 在“口语文本”输入框右侧增加相机按钮
+- 手机端点击后直接调用系统相机拍照
+- 将拍到的图片上传到服务端 OCR 路由
+- 服务端调用 Paddle Layout Parsing / OCR 接口
+- 将识别出的文本回填到当前输入框
+
+### Why This Fits The Product
+
+这个功能和当前产品目标是吻合的：
+
+- 用户的核心任务本来就是“把一段口语稿快速变成音频”
+- 在手机端，很多用户的稿子来自纸面讲义、打印题目、课堂投影或手写笔记
+- 让用户拍照后直接得到可编辑文本，比手打更符合实际使用场景
+
+### Current Architecture
+
+推荐采用“前端拍照 + 服务端代理 OCR”的结构，不要在浏览器里直接请求 Paddle 接口。
+
+前端职责：
+
+- 在 `/generate` 页面为文本区域增加一个相机按钮
+- 使用 `<input type="file" accept="image/*" capture="environment">`
+- 在支持的移动浏览器中优先打开后置摄像头
+- 拍照后先做本地压缩或尺寸限制，再提交到内部 API
+- 收到 OCR 结果后，把文本填回 `text` state
+
+服务端职责：
+
+- 新增 `POST /api/ocr`
+- 只允许已登录用户调用
+- 接收图片文件
+- 将图片转成 Base64
+- 以 `fileType = 1` 调用 Paddle 接口
+- 从返回结果中提取纯文本并返回给前端
+
+### Paddle Integration Notes
+
+你给的 Python 示例可以直接说明 Paddle 接口的调用方式，但在这个仓库里更适合改写成 Next.js Route Handler 的 `fetch` 实现，而不是把 `requests` Python 代码直接嵌进去。
+
+在当前代码库里，建议新增以下服务端环境变量：
+
+```env
+PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
+PADDLE_OCR_TOKEN=your-paddle-token
+PADDLE_OCR_TIMEOUT_MS=60000
+```
+
+重要：
+
+- `PADDLE_OCR_TOKEN` 只能放服务端环境变量，不能暴露到前端
+- 前端只能请求自己的 `/api/ocr`
+- 服务端再带 token 去请求 Paddle
+
+### Extraction Strategy
+
+Paddle 返回的是布局解析结果，不只是单纯 OCR 文本。对于当前 MVP，建议先做最小实现：
+
+- 只处理单张图片
+- 只读取 `result.layoutParsingResults[*].markdown.text`
+- 把所有文本块按顺序拼接成一个字符串
+- 暂时忽略图片下载、版面截图和复杂结构化输出
+
+这样更符合当前产品目标，因为你这里只是要把“可朗读文本”填进输入框，而不是做文档资产管理。
+
+### Vercel Deployment Constraint
+
+如果继续部署在 Vercel，需要注意一个关键限制：Vercel Functions 的请求体和响应体最大 payload 是 4.5 MB。大图直传很容易触发 `413 FUNCTION_PAYLOAD_TOO_LARGE`。这是 Vercel 官方文档当前给出的限制。
+
+因此实现时建议：
+
+- 前端拍照后先压缩
+- 限制最长边，例如 1600px 或 2000px
+- 控制单张图片在 2-3 MB 以内
+- 只接受图片，不接受 PDF
+
+参考：
+
+- Vercel Functions Limits: https://vercel.com/docs/functions/limitations
+- Vercel body size limit guide: https://vercel.com/kb/guide/how-to-bypass-vercel-body-size-limit-serverless-functions
+
+### Current Scope
+
+当前版本只做下面这些：
+
+- 仅在 `/generate` 页面接入
+- 只支持移动端拍照或移动端相册选图
+- 只支持图片 OCR，不支持 PDF
+- 成功后覆盖当前输入框内容
+- 失败时给出 toast
+- 识别结果仍然受当前 `MAX_TEXT_LENGTH` 限制
+
+当前还没有做：
+
+- PDF OCR
+- 多页文档 OCR
+- 自动分段排版修复
+- 版面区域可视化
+- OCR 图片持久化存储
+
+### Implementation Risks
+
+这个需求的主要风险点有 4 个：
+
+- 移动端浏览器对 `capture="environment"` 的支持并不完全一致，所以要同时兼容“拍照”和“从相册选图”
+- OCR 返回的文本可能包含换行、页眉页脚或题号噪音，需要一层基础清洗
+- 如果用户拍的是整页高分辨率照片，上传体积可能超出 Vercel 限制
+- 识别出的文本可能超过当前 1000 字上限，需要前端明确提示“已截断”
 
 ## Local Development
 
@@ -58,6 +174,9 @@ MINIMAX_API_KEY=your-minimax-api-key
 MINIMAX_API_BASE=https://api.minimax.io/v1
 MINIMAX_TIMEOUT_MS=120000
 MINIMAX_MAX_RETRIES=2
+PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
+PADDLE_OCR_TOKEN=your-paddle-token
+PADDLE_OCR_TIMEOUT_MS=60000
 ```
 
 4. 初始化 Supabase 数据库
@@ -150,6 +269,29 @@ npm run dev
 - 页面会在浏览器端读取真实音频时长，小于 10 秒会直接拦截
 - 真实合法性仍由 MiniMax 最终判定，过短或质量过差的样本仍可能被上游拒绝
 
+## OCR Setup
+
+### Required
+
+- 配置 `PADDLE_OCR_API_URL`
+- 配置 `PADDLE_OCR_TOKEN`
+
+### Current API Usage
+
+项目当前通过服务端 `POST /api/ocr` 代理 Paddle OCR：
+
+- 前端只上传图片到自己的 Next.js Route Handler
+- 服务端把图片转 Base64 后请求 Paddle Layout Parsing 接口
+- 当前仅提取 `layoutParsingResults[*].markdown.text`
+
+### Current Constraints
+
+- 仅支持移动端拍照或移动端相册选图
+- 仅支持单张图片
+- 建议图片压缩后控制在 3 MB 内
+- 不支持 PDF、多页文档或版面图像导出
+- Paddle token 只能放在服务端环境变量，不能暴露到前端
+
 ## Database Model
 
 ### `voices`
@@ -228,6 +370,9 @@ Vercel 的 Import Project 页面只能从 Git 仓库导入，不能直接从本�
 - `MINIMAX_API_BASE`
 - `MINIMAX_TIMEOUT_MS`
 - `MINIMAX_MAX_RETRIES`
+- `PADDLE_OCR_API_URL`
+- `PADDLE_OCR_TOKEN`
+- `PADDLE_OCR_TIMEOUT_MS`
 
 推荐直接填成：
 
@@ -239,6 +384,9 @@ MINIMAX_API_KEY=your-minimax-api-key
 MINIMAX_API_BASE=https://api.minimax.io/v1
 MINIMAX_TIMEOUT_MS=180000
 MINIMAX_MAX_RETRIES=3
+PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
+PADDLE_OCR_TOKEN=your-paddle-token
+PADDLE_OCR_TIMEOUT_MS=60000
 ```
 
 说明：
@@ -281,9 +429,10 @@ Next.js 默认输出，无需额外配置。
 1. `/login` 可以正常注册和登录
 2. `/voices/new` 可以上传文件、拖拽文件、麦克风录音
 3. 上传至少 10 秒样本后，音色可以成功创建
-4. `/generate` 可以生成音频并自动播放
-5. `/history` 能看到生成记录并播放
-6. MiniMax 错误会被用户看到友好提示
+4. `/generate` 可以手动输入文本，也可以在手机端拍照识别文本
+5. `/generate` 可以生成音频，并通过底部播放条手动播放或下载
+6. `/history` 能看到生成记录并播放
+7. MiniMax 和 OCR 错误会被用户看到友好提示
 
 ## Useful Commands
 
