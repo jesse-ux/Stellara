@@ -30,7 +30,9 @@ export async function recognizeTextFromImage(file: File) {
   const apiUrl = getRequiredEnv("PADDLE_OCR_API_URL", PADDLE_OCR_API_URL);
   const token = getRequiredEnv("PADDLE_OCR_TOKEN", PADDLE_OCR_TOKEN);
 
+  const startedAt = Date.now();
   const buffer = Buffer.from(await file.arrayBuffer());
+  const bufferReadyAt = Date.now();
   const payload = {
     file: buffer.toString("base64"),
     fileType: 1,
@@ -48,6 +50,7 @@ export async function recognizeTextFromImage(file: File) {
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(PADDLE_OCR_TIMEOUT_MS),
   });
+  const responseReadyAt = Date.now();
 
   const data = (await response.json().catch(() => null)) as PaddleResponse | null;
 
@@ -64,6 +67,13 @@ export async function recognizeTextFromImage(file: File) {
   if (!text) {
     throw new Error("未识别到可用文本，请调整拍摄角度后重试");
   }
+
+  console.info("[ocr] server timings", {
+    fileBytes: buffer.byteLength,
+    encodeMs: bufferReadyAt - startedAt,
+    upstreamMs: responseReadyAt - bufferReadyAt,
+    totalMs: responseReadyAt - startedAt,
+  });
 
   return { text };
 }

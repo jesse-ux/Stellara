@@ -87,6 +87,12 @@ export default function GeneratePage() {
       return file;
     }
 
+    // Skip client-side re-encoding for files that are already within our target budget.
+    // On mobile this avoids an expensive decode + canvas draw + JPEG encode on the main thread.
+    if (file.size <= MAX_OCR_IMAGE_BYTES) {
+      return file;
+    }
+
     const objectUrl = URL.createObjectURL(file);
 
     try {
@@ -149,7 +155,9 @@ export default function GeneratePage() {
     setOcrLoading(true);
 
     try {
+      const startedAt = performance.now();
       const preparedFile = await resizeImageForOcr(file);
+      const preprocessFinishedAt = performance.now();
       const formData = new FormData();
       formData.append("image", preparedFile);
 
@@ -157,6 +165,7 @@ export default function GeneratePage() {
         method: "POST",
         body: formData,
       });
+      const responseFinishedAt = performance.now();
 
       const data = (await response.json()) as { text?: string; error?: string };
       if (!response.ok || !data.text) {
@@ -172,6 +181,14 @@ export default function GeneratePage() {
           data.text.length > MAX_TEXT_LENGTH
             ? `文本过长，已截断到 ${MAX_TEXT_LENGTH} 个字符。`
             : "识别结果已填入口语文本。",
+      });
+
+      console.info("[ocr] client timings", {
+        originalBytes: file.size,
+        uploadedBytes: preparedFile.size,
+        preprocessMs: Math.round(preprocessFinishedAt - startedAt),
+        requestMs: Math.round(responseFinishedAt - preprocessFinishedAt),
+        totalMs: Math.round(responseFinishedAt - startedAt),
       });
     } catch (error) {
       toast({
