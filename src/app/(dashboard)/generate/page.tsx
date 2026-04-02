@@ -629,7 +629,7 @@ export default function GeneratePage() {
       </div>
 
       {audioUrl ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4 sm:px-6">
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 sm:px-6 lg:left-72">
           <div className="mx-auto w-full max-w-5xl">
             <AudioPlayer
               key={audioUrl}
