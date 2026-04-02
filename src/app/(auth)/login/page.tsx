@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/brand-logo";
 import { toast } from "@/components/ui/use-toast";
+import { LoginSunlit } from "@/components/login-sunlit";
 import { Loader2 } from "lucide-react";
 
 function LoginForm() {
@@ -48,22 +49,20 @@ function LoginForm() {
   };
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden px-4 py-4 sm:py-6">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute left-1/2 top-[10vh] h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-stellara-gold/10 blur-[150px]" />
-      </div>
+    <div className="relative h-[100dvh] overflow-hidden bg-[#090d18] px-4 py-4 sm:py-6">
+      <LoginSunlit />
 
-      <div className="relative z-10 mx-auto h-full w-full max-w-5xl">
-        <div className="absolute inset-x-0 top-[8vh] bottom-[22vh] flex items-center justify-center text-center">
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-[min(96vw,1800px)] flex-col items-center justify-between">
+        <div className="flex min-h-0 w-full flex-1 items-center justify-center pt-[1vh] text-center">
           <BrandLogo
             priority
-            className="mx-auto w-full max-w-[700px] justify-center sm:max-w-[860px]"
-            imageClassName="drop-shadow-[0_26px_60px_rgba(216,179,106,0.24)]"
+            className="mx-auto w-[min(64vw,630px)] justify-center sm:w-[min(62vw,896px)] lg:w-[min(60vw,1092px)]"
+            imageClassName="drop-shadow-[0_28px_72px_rgba(232,201,138,0.25)]"
           />
         </div>
 
-        <div className="absolute bottom-4 left-1/2 w-full max-w-md -translate-x-1/2 rounded-[28px] border border-stellara-gray-3/80 bg-stellara-gray-1/62 px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:bottom-6 sm:px-8 sm:py-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="login-glass-panel mb-4 w-full max-w-md rounded-[28px] px-6 py-6 sm:mb-6 sm:px-8 sm:py-8">
+          <form onSubmit={handleSubmit} className="relative z-10 space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">邮箱</Label>
               <Input
@@ -75,6 +74,7 @@ function LoginForm() {
                 placeholder="your@email.com…"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="border-white/10 bg-white/6 backdrop-blur-sm focus-visible:ring-stellara-gold/80"
                 required
               />
             </div>
@@ -88,11 +88,16 @@ function LoginForm() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="border-white/10 bg-white/6 backdrop-blur-sm focus-visible:ring-stellara-gold/80"
                 required
                 minLength={6}
               />
             </div>
-            <Button type="submit" className="mt-1 w-full" disabled={loading}>
+            <Button
+              type="submit"
+              className="mt-1 w-full shadow-[0_10px_30px_rgba(216,179,106,0.24)]"
+              disabled={loading}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSignUp ? "注册" : "登录"}
             </Button>

@@ -33,6 +33,231 @@
 }
 
 @layer utilities {
+  .login-sunlit {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 80% 12%, rgba(255, 176, 88, 0.2), transparent 26%),
+      radial-gradient(circle at 62% 20%, rgba(255, 146, 72, 0.1), transparent 34%),
+      radial-gradient(circle at 18% 22%, rgba(84, 96, 176, 0.12), transparent 28%),
+      radial-gradient(circle at 38% 8%, rgba(121, 83, 167, 0.08), transparent 26%),
+      linear-gradient(180deg, #070910 0%, #0a0f1f 38%, #0b1020 100%);
+  }
+
+  .login-sunlit__filter {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+
+  .login-glass-panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 222, 170, 0.16);
+    background:
+      linear-gradient(180deg, rgba(18, 24, 44, 0.28), rgba(12, 18, 34, 0.44)),
+      linear-gradient(135deg, rgba(255, 214, 156, 0.08), transparent 34%, rgba(120, 138, 255, 0.04) 100%);
+    box-shadow:
+      0 34px 120px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.09),
+      inset 0 -1px 0 rgba(255, 214, 156, 0.04);
+    backdrop-filter: blur(34px) saturate(150%);
+    -webkit-backdrop-filter: blur(34px) saturate(150%);
+  }
+
+  .login-glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 84% 12%, rgba(255, 206, 128, 0.16), transparent 28%),
+      radial-gradient(circle at 18% 0%, rgba(170, 182, 255, 0.08), transparent 24%),
+      linear-gradient(120deg, rgba(255, 255, 255, 0.08), transparent 24%, transparent 72%, rgba(255, 214, 156, 0.05));
+    opacity: 0.96;
+  }
+
+  .login-glass-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto 12% -28% 12%;
+    height: 52%;
+    pointer-events: none;
+    background: radial-gradient(circle at center, rgba(255, 181, 84, 0.1), transparent 64%);
+    filter: blur(30px);
+    opacity: 0.85;
+  }
+
+  .login-sunlit__ambient {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 76% 10%, rgba(255, 196, 116, 0.18), transparent 28%),
+      radial-gradient(circle at 70% 38%, rgba(255, 150, 77, 0.1), transparent 22%),
+      radial-gradient(circle at 24% 18%, rgba(106, 123, 226, 0.08), transparent 24%),
+      linear-gradient(180deg, rgba(12, 16, 34, 0.04) 0%, rgba(9, 13, 26, 0.2) 56%, rgba(5, 8, 15, 0.42) 100%);
+    animation: login-sunlit-ambient 16s ease-in-out infinite;
+  }
+
+  .login-sunlit__window {
+    position: absolute;
+    inset: -12% -10% -10% -10%;
+    opacity: 0.42;
+    transform: none;
+  }
+
+  .login-sunlit__lamp,
+  .login-sunlit__beam,
+  .login-sunlit__glow,
+  .login-sunlit__bounce,
+  .login-sunlit__dust,
+  .login-sunlit__progressive-blur,
+  .login-sunlit__progressive-blur > div {
+    position: absolute;
+    inset: 0;
+  }
+
+  .login-sunlit__lamp {
+    inset: 2% 4% auto auto;
+    width: 11rem;
+    height: 11rem;
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle, rgba(255, 235, 198, 0.96) 0 10%, rgba(255, 196, 113, 0.88) 18%, rgba(255, 155, 74, 0.48) 34%, rgba(255, 144, 74, 0.18) 56%, transparent 76%);
+    filter: blur(16px);
+    transform-origin: 78% 14%;
+    animation: login-sunlit-bloom 14s ease-in-out infinite;
+  }
+
+  .login-sunlit__beam {
+    background:
+      linear-gradient(244deg, rgba(255, 204, 121, 0.48) 0%, rgba(255, 167, 82, 0.28) 16%, rgba(255, 142, 66, 0.14) 32%, rgba(255, 135, 70, 0.06) 48%, transparent 66%);
+    mix-blend-mode: screen;
+    transform-origin: 82% 10%;
+    animation: login-sunlit-bloom 14s ease-in-out infinite;
+  }
+
+  .login-sunlit__glow {
+    background:
+      radial-gradient(circle at 82% 8%, rgba(255, 230, 184, 0.46), transparent 18%),
+      radial-gradient(circle at 28% 10%, rgba(126, 143, 255, 0.08), transparent 18%),
+      linear-gradient(248deg, rgba(255, 208, 124, 0.28) 0%, rgba(255, 168, 82, 0.14) 24%, rgba(109, 123, 221, 0.04) 44%, transparent 58%);
+    opacity: 0.82;
+    mix-blend-mode: screen;
+    transform-origin: 76% 10%;
+    animation: login-sunlit-bloom 14s ease-in-out infinite;
+  }
+
+  .login-sunlit__bounce {
+    inset: auto 0 0 0;
+    height: 100%;
+    background:
+      linear-gradient(356deg, rgba(255, 161, 74, 0.26) 0%, rgba(255, 178, 98, 0.14) 18%, rgba(164, 144, 255, 0.03) 34%, transparent 48%, transparent 100%);
+    opacity: 0.84;
+    filter: blur(34px);
+    transform-origin: 70% 12%;
+    animation: login-sunlit-bloom 14s ease-in-out infinite;
+  }
+
+  .login-sunlit__dust {
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255, 209, 146, 0.14) 0 0.12rem, transparent 0.14rem),
+      radial-gradient(circle at 42% 56%, rgba(255, 197, 129, 0.1) 0 0.1rem, transparent 0.12rem),
+      radial-gradient(circle at 66% 32%, rgba(255, 197, 129, 0.12) 0 0.1rem, transparent 0.12rem),
+      radial-gradient(circle at 74% 68%, rgba(255, 197, 129, 0.09) 0 0.12rem, transparent 0.14rem),
+      radial-gradient(circle at 58% 84%, rgba(255, 197, 129, 0.09) 0 0.12rem, transparent 0.14rem);
+    background-size: 22rem 22rem, 18rem 18rem, 24rem 24rem, 26rem 26rem, 20rem 20rem;
+    filter: url(#loginSunlitHaze) blur(1.2px);
+    opacity: 0.46;
+    animation: login-sunlit-drift 36s linear infinite;
+  }
+
+  .login-sunlit__progressive-blur > div {
+    inset: 0;
+    backdrop-filter: blur(var(--blur-amount));
+    -webkit-backdrop-filter: blur(var(--blur-amount));
+    mask-image: linear-gradient(248deg, transparent, transparent var(--stop1), black var(--stop2), black);
+    -webkit-mask-image: linear-gradient(248deg, transparent, transparent var(--stop1), black var(--stop2), black);
+  }
+
+  .login-sunlit__progressive-blur > div:nth-child(1) {
+    --blur-amount: 4px;
+    --stop1: 0%;
+    --stop2: 0%;
+  }
+
+  .login-sunlit__progressive-blur > div:nth-child(2) {
+    --blur-amount: 14px;
+    --stop1: 22%;
+    --stop2: 72%;
+  }
+
+  .login-sunlit__progressive-blur > div:nth-child(3) {
+    --blur-amount: 38px;
+    --stop1: 30%;
+    --stop2: 68%;
+  }
+
+  .login-sunlit__progressive-blur > div:nth-child(4) {
+    --blur-amount: 88px;
+    --stop1: 52%;
+    --stop2: 82%;
+  }
+
+  @keyframes login-sunlit-drift {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+
+    50% {
+      transform: translate3d(-1%, 1.4%, 0);
+    }
+
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes login-sunlit-ambient {
+    0%,
+    100% {
+      opacity: 0.88;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.022);
+    }
+  }
+
+  @keyframes login-sunlit-bloom {
+    0%,
+    100% {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .login-sunlit__window {
+      inset: -8% -22% -8% -22%;
+      opacity: 0.34;
+    }
+
+    .login-sunlit__lamp {
+      width: 8.5rem;
+      height: 8.5rem;
+    }
+  }
+
   .glass {
     @apply border bg-stellara-gray-1/70 backdrop-blur-md;
   }
