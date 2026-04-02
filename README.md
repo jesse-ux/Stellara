@@ -18,19 +18,21 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 - 新建音色页 `/voices/new`
 - 文本生成音频页 `/generate`
 - 移动端拍照 OCR 导入口语文本
+- 录音后语音转文字回填输入框
 - 生成历史页 `/history`
 - 主样本上传、拖拽上传、麦克风录音
 - 录音实时频谱图
 - 自定义音频播放器
+- 生成音频持久化到 Supabase Storage
 - 服务端 API
   - `POST /api/voices`
   - `POST /api/generate`
   - `POST /api/ocr`
+  - `POST /api/asr`
 
 当前还没有实现：
 
 - SSE 实时状态流
-- 音频持久化到 Supabase Storage
 - 管理后台
 - 自动刷新 7 天即将过期音色的 cron job
 - PDF OCR
@@ -310,6 +312,7 @@ npm run dev
 - 前端使用浏览器 `MediaRecorder` 录音
 - 停止录音后上传音频到自己的 Next.js Route Handler
 - 服务端通过 Google Speech-to-Text V2 `recognizers/_:recognize` 同步识别
+- `chirp_3` 模型通过区域 endpoint 调用，不使用 `global`
 - 默认固定识别英文 `en-US`
 
 ### Current Constraints
@@ -318,6 +321,7 @@ npm run dev
 - 单次录音最长 60 秒
 - 当前主要面向手机端和桌面浏览器的短语音输入
 - 依赖浏览器麦克风权限与 `MediaRecorder` 支持
+- 当前线上已验证可正常返回英文识别结果
 
 ## Database Model
 

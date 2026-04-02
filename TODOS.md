@@ -38,15 +38,6 @@
 - **Effort:** M (human ~3天 / CC ~1h)
 - **Depends on:** 现有生成接口稳定
 
-### [P1] 生成页增加语音转文字输入
-- **What:** 在生成音频的文本输入框中增加麦克风入口，支持录音后调用 Google Cloud Speech-to-Text 回填文本
-- **Why:** speaking 场景不仅有看提示，也有听提示后直接口述答案的输入需求
-- **Pros:** 降低输入阻力，更贴近口语练习场景
-- **Cons:** 需要处理浏览器录音兼容、移动端权限和 ASR 请求时延
-- **Context:** 首版采用“录完回填”，不做实时流式听写；优先保证速度和稳定性
-- **Effort:** M (human ~2天 / CC ~1h)
-- **Depends on:** Google Cloud 服务账号配置可复用
-
 ### [P2] 音色库平台化
 - **What:** 将音色库设计为内部平台服务，供其他语音功能（AI对话、语音消息等）复用
 - **Why:** 为 Phase 2 的多功能语音平台打基础
@@ -83,3 +74,7 @@
 ### [P0] 首用引导页与首次生成引导
 - **What:** 为没有音色的新用户新增 onboarding 页面，并在首次进入生成页时提供下一步提示
 - **Outcome:** 已完成 onboarding 页面、新建音色成功后直达生成页、首次生成提示态
+
+### [P1] 生成页增加语音转文字输入
+- **What:** 在生成音频的文本输入框中增加麦克风入口，支持录音后调用 Google Cloud Speech-to-Text 回填文本
+- **Outcome:** 已完成浏览器录音、`POST /api/asr`、Google Speech-to-Text V2 区域 endpoint 接入；当前采用“录完回填”，线上已验证可返回英文文本
