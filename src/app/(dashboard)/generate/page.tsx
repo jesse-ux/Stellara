@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Camera, Loader2, Sparkles, Volume2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +41,7 @@ const GENERATION_STEPS = [
 ];
 
 export default function GeneratePage() {
+  const searchParams = useSearchParams();
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voiceId, setVoiceId] = useState("");
   const [text, setText] = useState("");
@@ -47,6 +50,8 @@ export default function GeneratePage() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
+  const requestedVoiceId = searchParams.get("voiceId");
+  const isFirstGeneration = searchParams.get("first") === "1";
 
   useEffect(() => {
     const loadVoices = async () => {
@@ -60,14 +65,18 @@ export default function GeneratePage() {
         .map(withDerivedVoiceStatus)
         .filter((voice) => voice.status === "active" || voice.status === "expiring");
       setVoices(list);
-      if (list[0]) {
-        setVoiceId(list[0].id);
+
+      if (list.length > 0) {
+        const preferredVoice = requestedVoiceId
+          ? list.find((voice) => voice.id === requestedVoiceId)
+          : null;
+        setVoiceId(preferredVoice?.id ?? list[0].id);
       }
       setLoading(false);
     };
 
     loadVoices();
-  }, []);
+  }, [requestedVoiceId]);
 
   useEffect(() => {
     if (!submitting) return;
@@ -254,6 +263,22 @@ export default function GeneratePage() {
         </div>
       </div>
 
+      {isFirstGeneration ? (
+        <Card className="border border-stellara-gold/20 bg-stellara-gold/8">
+          <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-sm font-medium text-stellara-white">先完成你的第一次试听</div>
+              <p className="mt-1 text-sm text-stellara-gray-6">
+                先用 1 到 3 句短文本确认音色效果，再继续生成更长的口语内容。
+              </p>
+            </div>
+            <div className="text-sm text-stellara-gray-6">
+              确认清晰度和语气符合预期后，再继续生成正式内容。
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_320px]">
         <Card>
           <CardHeader>
@@ -365,6 +390,14 @@ export default function GeneratePage() {
                   <p className="text-sm text-stellara-gray-6">
                     请点击底部播放条上的播放按钮开始收听，也可以直接下载音频。
                   </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setText("")}>
+                      再生成一条
+                    </Button>
+                    <Button asChild size="sm">
+                      <Link href="/history">查看生成记录</Link>
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-stellara-gray-6">

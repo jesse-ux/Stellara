@@ -175,9 +175,6 @@ MINIMAX_API_KEY=your-minimax-api-key
 MINIMAX_API_BASE=https://api.minimax.io/v1
 MINIMAX_TIMEOUT_MS=120000
 MINIMAX_MAX_RETRIES=2
-PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
-PADDLE_OCR_TOKEN=your-paddle-token
-PADDLE_OCR_TIMEOUT_MS=60000
 GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
 GOOGLE_VISION_TIMEOUT_MS=20000
 GOOGLE_VISION_FEATURE=DOCUMENT_TEXT_DETECTION
@@ -277,16 +274,16 @@ npm run dev
 
 ### Required
 
-- 配置 `PADDLE_OCR_API_URL`
-- 配置 `PADDLE_OCR_TOKEN`
+- 配置 `GOOGLE_VISION_CREDENTIALS_JSON`
 
 ### Current API Usage
 
-项目当前通过服务端 `POST /api/ocr` 代理 Paddle OCR：
+项目当前通过服务端 `POST /api/ocr` 代理 Google Vision OCR：
 
 - 前端只上传图片到自己的 Next.js Route Handler
-- 服务端把图片转 Base64 后请求 Paddle Layout Parsing 接口
-- 当前仅提取 `layoutParsingResults[*].markdown.text`
+- 服务端把图片转 Base64 后请求 Google Vision `images:annotate`
+- 优先读取 `responses[0].fullTextAnnotation.text`
+- 回退读取 `responses[0].textAnnotations[0].description`
 
 ### Current Constraints
 
@@ -294,7 +291,7 @@ npm run dev
 - 仅支持单张图片
 - 建议图片压缩后控制在 3 MB 内
 - 不支持 PDF、多页文档或版面图像导出
-- Paddle token 只能放在服务端环境变量，不能暴露到前端
+- Google 服务账号凭证只能放在服务端环境变量，不能暴露到前端
 
 ## Database Model
 
@@ -374,9 +371,9 @@ Vercel 的 Import Project 页面只能从 Git 仓库导入，不能直接从本�
 - `MINIMAX_API_BASE`
 - `MINIMAX_TIMEOUT_MS`
 - `MINIMAX_MAX_RETRIES`
-- `PADDLE_OCR_API_URL`
-- `PADDLE_OCR_TOKEN`
-- `PADDLE_OCR_TIMEOUT_MS`
+- `GOOGLE_VISION_CREDENTIALS_JSON`
+- `GOOGLE_VISION_TIMEOUT_MS`
+- `GOOGLE_VISION_FEATURE`
 
 推荐直接填成：
 
@@ -388,9 +385,9 @@ MINIMAX_API_KEY=your-minimax-api-key
 MINIMAX_API_BASE=https://api.minimax.io/v1
 MINIMAX_TIMEOUT_MS=180000
 MINIMAX_MAX_RETRIES=3
-PADDLE_OCR_API_URL=https://f8pewdlbn3h753q1.aistudio-app.com/layout-parsing
-PADDLE_OCR_TOKEN=your-paddle-token
-PADDLE_OCR_TIMEOUT_MS=60000
+GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
+GOOGLE_VISION_TIMEOUT_MS=20000
+GOOGLE_VISION_FEATURE=DOCUMENT_TEXT_DETECTION
 ```
 
 说明：

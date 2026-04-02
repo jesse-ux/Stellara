@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
   // Public routes
   if (pathname === "/login") {
     if (user) {
-      return NextResponse.redirect(new URL("/voices", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
     return supabaseResponse;
   }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getServiceClient } from "@/lib/supabase/server";
 import { getErrorMessage, MiniMaxError, textToSpeech } from "@/lib/minimax";
+import { buildGeneratedAudioPath, GENERATED_AUDIO_BUCKET } from "@/lib/storage";
 import { validateGenerationText } from "@/lib/voice";
 
 export async function POST(request: Request) {
@@ -62,6 +63,38 @@ export async function POST(request: Request) {
       text: text.trim(),
     });
 
+    const storageClient = await getServiceClient();
+    const audioResponse = await fetch(result.audioUrl, {
+      signal: AbortSignal.timeout(60000),
+    });
+
+    if (!audioResponse.ok) {
+      throw new Error(`下载生成音频失败：${audioResponse.status}`);
+    }
+
+    const audioBuffer = await audioResponse.arrayBuffer();
+    const storagePath = buildGeneratedAudioPath(user.id, taskId);
+    const contentType = audioResponse.headers.get("content-type") || "audio/mpeg";
+
+    const { error: uploadError } = await storageClient.storage
+      .from(GENERATED_AUDIO_BUCKET)
+      .upload(storagePath, audioBuffer, {
+        contentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(`保存生成音频失败：${uploadError.message}`);
+    }
+
+    const { data: signedUrlData, error: signedUrlError } = await storageClient.storage
+      .from(GENERATED_AUDIO_BUCKET)
+      .createSignedUrl(storagePath, 60 * 60 * 24);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      throw new Error(signedUrlError?.message || "生成播放链接失败");
+    }
+
     const completedAt = new Date().toISOString();
 
     await supabase
@@ -69,7 +102,7 @@ export async function POST(request: Request) {
       .update({
         status: "completed",
         temp_audio_url: result.audioUrl,
-        storage_audio_url: result.audioUrl,
+        storage_audio_url: storagePath,
         completed_at: completedAt,
       })
       .eq("id", taskId);
@@ -86,7 +119,7 @@ export async function POST(request: Request) {
       task: {
         id: taskId,
         voice_name: voice.name,
-        audio_url: result.audioUrl,
+        audio_url: signedUrlData.signedUrl,
         created_at: completedAt,
       },
     });

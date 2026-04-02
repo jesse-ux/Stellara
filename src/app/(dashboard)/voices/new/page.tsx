@@ -382,7 +382,7 @@ export default function NewVoicePage() {
         method: "POST",
         body: formData,
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { error?: string; voice?: { id: string } };
 
       if (!response.ok) {
         throw new Error(data.error || "克隆失败");
@@ -390,9 +390,12 @@ export default function NewVoicePage() {
 
       toast({
         title: "音色克隆成功",
-        description: "你现在可以直接去生成音频了",
+        description: "下一步直接生成你的第一段音频。",
       });
-      router.push("/voices");
+      const nextVoiceId = data.voice?.id;
+      router.push(
+        nextVoiceId ? `/generate?voiceId=${encodeURIComponent(nextVoiceId)}&first=1` : "/generate?first=1"
+      );
       router.refresh();
     } catch (error) {
       toast({
@@ -656,8 +659,8 @@ export default function NewVoicePage() {
         <div className="space-y-4">
           <Card>
           <CardHeader>
-            <CardTitle>上传建议</CardTitle>
-            <CardDescription>先保证稳定，再追求相似度。</CardDescription>
+            <CardTitle>首次录音建议</CardTitle>
+            <CardDescription>先把第一条样本录清楚，再追求更高相似度。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-stellara-gray-6">
             <div className="panel-muted p-4">
@@ -670,16 +673,25 @@ export default function NewVoicePage() {
             <div className="panel-muted p-4">
               <div className="flex items-center gap-2 text-stellara-white">
                 <Sparkles className="h-4 w-4 text-stellara-gold" />
-                样本建议
+                推荐朗读方式
               </div>
-              <p className="mt-2">如果主要用于英语口试，样本里最好包含完整英文句子，而不是零散单词。</p>
+              <p className="mt-2">如果主要用于英语口试，样本里最好包含 2 到 3 句完整英文句子，而不是零散单词。</p>
             </div>
             <div className="panel-muted p-4">
               <div className="flex items-center gap-2 text-stellara-white">
                 <Upload className="h-4 w-4 text-stellara-gold" />
-                文件大小
+                录后自检
               </div>
-              <p className="mt-2">页面会先做基础校验，但真实时长仍以录音内容为准，过短样本可能被供应商拒绝。</p>
+              <p className="mt-2">试听时重点确认三件事：人声是否清晰、句子是否完整、是否有明显环境噪音。</p>
+            </div>
+            <div className="panel-muted p-4">
+              <div className="flex items-center gap-2 text-stellara-white">
+                <Sparkles className="h-4 w-4 text-stellara-gold" />
+                示例句子
+              </div>
+              <p className="mt-2">
+                Good morning teacher. Today I would like to talk about my project and why it matters to students like us.
+              </p>
             </div>
           </CardContent>
           </Card>

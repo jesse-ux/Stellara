@@ -83,25 +83,25 @@ export default function VoicesPage() {
       {loading ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i}>
               <CardHeader className="pb-5">
                 <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 shrink-0 rounded-2xl bg-stellara-gray-3" />
+                  <div className="skeleton-block h-12 w-12 shrink-0 rounded-2xl" />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="h-6 w-32 rounded bg-stellara-gray-3" />
-                        <div className="mt-2 h-4 w-52 rounded bg-stellara-gray-3" />
+                        <div className="skeleton-block h-6 w-32 rounded-full" />
+                        <div className="skeleton-block mt-2 h-4 w-52 rounded-full" />
                       </div>
-                      <div className="h-6 w-16 rounded-full bg-stellara-gray-3" />
+                      <div className="skeleton-block h-6 w-16 rounded-full" />
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {[1, 2, 3].map((panel) => (
                         <div key={panel} className="panel-muted p-3">
-                          <div className="h-3 w-16 rounded bg-stellara-gray-3" />
-                          <div className="mt-2 h-4 w-20 rounded bg-stellara-gray-3" />
+                          <div className="skeleton-block h-3 w-16 rounded-full" />
+                          <div className="skeleton-block mt-2 h-4 w-20 rounded-full" />
                         </div>
                       ))}
                     </div>
@@ -111,8 +111,8 @@ export default function VoicesPage() {
 
               <CardContent className="pt-1">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="h-4 w-44 rounded bg-stellara-gray-3" />
-                  <div className="h-9 w-28 rounded-xl bg-stellara-gray-3" />
+                  <div className="skeleton-block h-4 w-44 rounded-full" />
+                  <div className="skeleton-block h-9 w-28 rounded-xl" />
                 </div>
               </CardContent>
             </Card>
