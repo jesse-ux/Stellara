@@ -5,6 +5,7 @@ const GOOGLE_SPEECH_LANGUAGE = process.env.GOOGLE_SPEECH_LANGUAGE || "en-US";
 const GOOGLE_SPEECH_MODEL = process.env.GOOGLE_SPEECH_MODEL || "chirp_3";
 const GOOGLE_SPEECH_LOCATION = process.env.GOOGLE_SPEECH_LOCATION || "asia-southeast1";
 const GOOGLE_SPEECH_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
+const GOOGLE_SPEECH_API_BASE = `https://${GOOGLE_SPEECH_LOCATION}-speech.googleapis.com/v2`;
 
 type GoogleSpeechRecognizeResponse = {
   results?: Array<{
@@ -26,7 +27,7 @@ export async function recognizeSpeechFromAudio(file: File) {
   const bufferReadyAt = Date.now();
 
   const response = await fetch(
-    `https://speech.googleapis.com/v2/projects/${credentials.project_id}/locations/${GOOGLE_SPEECH_LOCATION}/recognizers/_:recognize`,
+    `${GOOGLE_SPEECH_API_BASE}/projects/${credentials.project_id}/locations/${GOOGLE_SPEECH_LOCATION}/recognizers/_:recognize`,
     {
       method: "POST",
       headers: {
