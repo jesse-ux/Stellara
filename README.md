@@ -85,6 +85,9 @@ Stellara 是一个面向英语口试场景的 AI 音色复刻 MVP。用户登录
 GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
 GOOGLE_VISION_TIMEOUT_MS=20000
 GOOGLE_VISION_FEATURE=DOCUMENT_TEXT_DETECTION
+GOOGLE_SPEECH_TIMEOUT_MS=30000
+GOOGLE_SPEECH_LANGUAGE=en-US
+GOOGLE_SPEECH_MODEL=chirp_3
 ```
 
 重要：
@@ -293,6 +296,28 @@ npm run dev
 - 不支持 PDF、多页文档或版面图像导出
 - Google 服务账号凭证只能放在服务端环境变量，不能暴露到前端
 
+## ASR Setup
+
+### Required
+
+- 复用 `GOOGLE_VISION_CREDENTIALS_JSON`，或改用更通用的 `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+
+### Current API Usage
+
+项目当前通过服务端 `POST /api/asr` 代理 Google Cloud Speech-to-Text：
+
+- 前端使用浏览器 `MediaRecorder` 录音
+- 停止录音后上传音频到自己的 Next.js Route Handler
+- 服务端通过 Google Speech-to-Text V2 `recognizers/_:recognize` 同步识别
+- 默认固定识别英文 `en-US`
+
+### Current Constraints
+
+- 首版采用“录完回填”，不做实时流式听写
+- 单次录音最长 60 秒
+- 当前主要面向手机端和桌面浏览器的短语音输入
+- 依赖浏览器麦克风权限与 `MediaRecorder` 支持
+
 ## Database Model
 
 ### `voices`
@@ -374,6 +399,9 @@ Vercel 的 Import Project 页面只能从 Git 仓库导入，不能直接从本�
 - `GOOGLE_VISION_CREDENTIALS_JSON`
 - `GOOGLE_VISION_TIMEOUT_MS`
 - `GOOGLE_VISION_FEATURE`
+- `GOOGLE_SPEECH_TIMEOUT_MS`
+- `GOOGLE_SPEECH_LANGUAGE`
+- `GOOGLE_SPEECH_MODEL`
 
 推荐直接填成：
 
@@ -388,6 +416,9 @@ MINIMAX_MAX_RETRIES=3
 GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
 GOOGLE_VISION_TIMEOUT_MS=20000
 GOOGLE_VISION_FEATURE=DOCUMENT_TEXT_DETECTION
+GOOGLE_SPEECH_TIMEOUT_MS=30000
+GOOGLE_SPEECH_LANGUAGE=en-US
+GOOGLE_SPEECH_MODEL=chirp_3
 ```
 
 说明：

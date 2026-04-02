@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Camera, Loader2, Sparkles, Volume2 } from "lucide-react";
+import { Camera, Loader2, Mic, Sparkles, Square, Volume2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { withDerivedVoiceStatus } from "@/lib/voice-status";
 import type { Voice } from "@/types";
 import { AudioPlayer } from "@/components/audio-player";
 import { MAX_OCR_IMAGE_BYTES, MAX_OCR_IMAGE_DIMENSION, validateOcrImage } from "@/lib/ocr";
+import { MAX_ASR_RECORDING_SECONDS } from "@/lib/asr";
 
 interface GenerateResult {
   task: {
@@ -42,12 +43,19 @@ const GENERATION_STEPS = [
 
 export default function GeneratePage() {
   const searchParams = useSearchParams();
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordingTimerRef = useRef<number | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voiceId, setVoiceId] = useState("");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [asrLoading, setAsrLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
   const [audioUrl, setAudioUrl] = useState("");
   const requestedVoiceId = searchParams.get("voiceId");
@@ -88,8 +96,45 @@ export default function GeneratePage() {
     return () => window.clearInterval(timer);
   }, [submitting]);
 
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        window.clearInterval(recordingTimerRef.current);
+      }
+
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
   const textError = useMemo(() => validateGenerationText(text), [text]);
   const remainingChars = MAX_TEXT_LENGTH - text.length;
+
+  const stopRecordingSession = () => {
+    if (recordingTimerRef.current) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    setIsRecording(false);
+    setRecordingSeconds(0);
+  };
+
+  const mergeRecognizedText = (nextText: string) => {
+    setText((current) => {
+      if (!current.trim()) {
+        return nextText.slice(0, MAX_TEXT_LENGTH);
+      }
+
+      const merged = `${current.trimEnd()}\n${nextText}`.slice(0, MAX_TEXT_LENGTH);
+      return merged;
+    });
+  };
 
   const resizeImageForOcr = async (file: File) => {
     if (file.type === "image/heic" || file.type === "image/heif") {
@@ -252,6 +297,137 @@ export default function GeneratePage() {
     }
   };
 
+  const transcribeAudio = async (blob: Blob, mimeType: string) => {
+    setAsrLoading(true);
+
+    try {
+      const extension = mimeType.includes("mp4")
+        ? "m4a"
+        : mimeType.includes("mpeg")
+          ? "mp3"
+          : mimeType.includes("ogg")
+            ? "ogg"
+            : "webm";
+      const file = new File([blob], `speech-input.${extension}`, {
+        type: mimeType || "audio/webm",
+      });
+      const formData = new FormData();
+      formData.append("audio", file);
+
+      const response = await fetch("/api/asr", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await response.json()) as { text?: string; error?: string };
+      if (!response.ok || !data.text) {
+        throw new Error(data.error || "语音识别失败");
+      }
+
+      mergeRecognizedText(data.text);
+      toast({
+        title: "识别完成",
+        description: "语音内容已填入口语文本。",
+      });
+    } catch (error) {
+      toast({
+        title: "语音识别失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setAsrLoading(false);
+    }
+  };
+
+  const stopRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") {
+      stopRecordingSession();
+      return;
+    }
+
+    recorder.stop();
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast({
+        title: "当前浏览器不支持录音",
+        description: "请改用手动输入或拍照导入。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+      chunksRef.current = [];
+      mediaStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      setRecordingSeconds(0);
+      setIsRecording(true);
+
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      });
+
+      recorder.addEventListener(
+        "stop",
+        () => {
+          const blob = new Blob(chunksRef.current, {
+            type: recorder.mimeType || mimeType || "audio/webm",
+          });
+          chunksRef.current = [];
+          stopRecordingSession();
+          if (blob.size > 0) {
+            void transcribeAudio(blob, recorder.mimeType || mimeType || "audio/webm");
+          }
+        },
+        { once: true }
+      );
+
+      recorder.start();
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingSeconds((current) => {
+          const next = current + 1;
+          if (next >= MAX_ASR_RECORDING_SECONDS) {
+            stopRecording();
+          }
+          return next;
+        });
+      }, 1000);
+    } catch (error) {
+      stopRecordingSession();
+      toast({
+        title: "无法开始录音",
+        description:
+          error instanceof Error ? error.message : "请检查麦克风权限后重试",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAsrButtonClick = async () => {
+    if (submitting || ocrLoading || asrLoading) return;
+
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    await startRecording();
+  };
+
   return (
     <div className={`space-y-8 ${audioUrl ? "pb-36" : ""}`}>
       <div className="page-header">
@@ -307,48 +483,91 @@ export default function GeneratePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="generation-text">口语文本</Label>
-                    <label className="sm:hidden">
-                      <input
-                        accept="image/*"
-                        capture="environment"
-                        className="sr-only"
-                        disabled={ocrLoading || submitting}
-                        type="file"
-                        onChange={handleOcrFileChange}
-                      />
-                      <span className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-stellara-gray-4 bg-stellara-gray-1/40 px-3 text-xs font-medium text-stellara-gray-6 transition-colors hover:bg-stellara-gray-2/70 hover:text-stellara-white">
-                        {ocrLoading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Camera className="h-3.5 w-3.5" />
-                        )}
-                        {ocrLoading ? "识别中" : "拍照导入"}
-                      </span>
-                    </label>
                   </div>
                   <span className="text-xs text-stellara-gray-6">
                     {remainingChars} 字符剩余
                   </span>
                 </div>
-                <Textarea
-                  id="generation-text"
-                  name="generation_text"
-                  autoComplete="off"
-                  maxLength={MAX_TEXT_LENGTH}
-                  placeholder="例如：Good morning professor, today I will talk about my project…"
-                  rows={10}
-                  value={text}
-                  onChange={(event) => setText(event.target.value.slice(0, MAX_TEXT_LENGTH))}
-                />
-                <p className="text-xs text-stellara-gray-6 sm:hidden">
-                  手机上可直接拍照识别讲稿，识别结果会自动填入输入框。
-                </p>
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Textarea
+                      id="generation-text"
+                      name="generation_text"
+                      autoComplete="off"
+                      maxLength={MAX_TEXT_LENGTH}
+                      placeholder="例如：Good morning professor, today I will talk about my project…"
+                      rows={10}
+                      className="pb-14"
+                      value={text}
+                      onChange={(event) => setText(event.target.value.slice(0, MAX_TEXT_LENGTH))}
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 px-3 pb-3">
+                      <div className="pointer-events-auto flex items-center gap-2">
+                        <label>
+                          <input
+                            accept="image/*"
+                            capture="environment"
+                            className="sr-only"
+                            disabled={ocrLoading || submitting || asrLoading || isRecording}
+                            type="file"
+                            onChange={handleOcrFileChange}
+                          />
+                          <span className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-stellara-gray-4 bg-stellara-gray-1/60 px-3 text-xs font-medium text-stellara-gray-6 transition-colors hover:bg-stellara-gray-2/70 hover:text-stellara-white">
+                            {ocrLoading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Camera className="h-3.5 w-3.5" />
+                            )}
+                            {ocrLoading ? "识别中" : "拍照导入"}
+                          </span>
+                        </label>
+                      </div>
+                      <div className="pointer-events-auto flex items-center gap-2">
+                        {isRecording ? (
+                          <span className="inline-flex h-9 items-center rounded-xl border border-red-400/30 bg-red-500/10 px-3 text-xs font-medium text-red-300">
+                            录音中 {recordingSeconds}s
+                          </span>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant={isRecording ? "destructive" : "outline"}
+                          size="icon"
+                          className="h-9 w-9 rounded-xl"
+                          disabled={submitting || ocrLoading || asrLoading}
+                          onClick={handleAsrButtonClick}
+                        >
+                          {asrLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isRecording ? (
+                            <Square className="h-4 w-4" />
+                          ) : (
+                            <Mic className="h-4 w-4" />
+                          )}
+                          <span className="sr-only">
+                            {isRecording ? "停止录音并识别" : "开始录音转文字"}
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-stellara-gray-6">
+                    可拍照导入讲稿，也可点击麦克风录音转文字。录音最长 {MAX_ASR_RECORDING_SECONDS} 秒。
+                  </p>
+                </div>
                 {textError && <p className="text-sm text-red-400">{textError}</p>}
               </div>
 
               <Button
                 type="submit"
-                disabled={submitting || ocrLoading || loading || voices.length === 0 || !!textError}
+                disabled={
+                  submitting ||
+                  ocrLoading ||
+                  asrLoading ||
+                  isRecording ||
+                  loading ||
+                  voices.length === 0 ||
+                  !!textError
+                }
               >
                 {submitting ? (
                   <>
