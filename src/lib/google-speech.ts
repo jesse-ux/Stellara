@@ -3,6 +3,7 @@ import { getGoogleAccessToken, getGoogleCredentials } from "@/lib/google-auth";
 const GOOGLE_SPEECH_TIMEOUT_MS = Number(process.env.GOOGLE_SPEECH_TIMEOUT_MS || 30000);
 const GOOGLE_SPEECH_LANGUAGE = process.env.GOOGLE_SPEECH_LANGUAGE || "en-US";
 const GOOGLE_SPEECH_MODEL = process.env.GOOGLE_SPEECH_MODEL || "chirp_3";
+const GOOGLE_SPEECH_LOCATION = process.env.GOOGLE_SPEECH_LOCATION || "asia-southeast1";
 const GOOGLE_SPEECH_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 
 type GoogleSpeechRecognizeResponse = {
@@ -25,7 +26,7 @@ export async function recognizeSpeechFromAudio(file: File) {
   const bufferReadyAt = Date.now();
 
   const response = await fetch(
-    `https://speech.googleapis.com/v2/projects/${credentials.project_id}/locations/global/recognizers/_:recognize`,
+    `https://speech.googleapis.com/v2/projects/${credentials.project_id}/locations/${GOOGLE_SPEECH_LOCATION}/recognizers/_:recognize`,
     {
       method: "POST",
       headers: {
